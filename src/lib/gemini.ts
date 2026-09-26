@@ -33,6 +33,7 @@ async function generateJson(prompt: string): Promise<unknown> {
     res = await fetch(`${url}?key=${encodeURIComponent(apiKey)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(20_000),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0, responseMimeType: "application/json" },

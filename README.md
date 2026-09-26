@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CodeMixed
 
-## Getting Started
+CodeMixed detects languages in code-mixed text and translates segments into a single target language. The app uses Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, and server-side Google Gemini/Translate APIs.
 
-First, run the development server:
+## Local development
 
 ```bash
+npm install
+copy .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Add `GEMINI_API_KEY` to `.env.local` for translation. `GOOGLE_TRANSLATE_API_KEY` is an optional fallback. Without either key, the app uses its offline heuristic/demo behavior. Local development can run without Upstash credentials; API rate limiting is bypassed only outside production.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy to Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Push this repository to GitHub, then import it in Vercel. Keep the detected Next.js framework, root directory, and `npm run build` command.
+2. Create a REST-enabled Redis database in Upstash and add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to the Vercel project's Production and Preview environments.
+3. Add `GEMINI_API_KEY` to the same environments. Optionally add `GEMINI_MODEL` or `GOOGLE_TRANSLATE_API_KEY`.
+4. Deploy. Verify the site and `GET /api/languages`, then test segregation and translation with a short paragraph.
 
-## Learn More
+The `/api/segregate` and `/api/unify` endpoints share a distributed limit of 30 requests per client IP per minute. Production requests fail closed with `503` if Upstash is not configured or unavailable; this avoids silently exposing paid provider calls without abuse protection. Provider requests have a 20-second timeout. API keys are server-only and must never use the `NEXT_PUBLIC_` prefix.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For production traffic, place the Upstash database near the Vercel function region and monitor provider and Redis usage. Request history currently remains in each user's browser; accounts, cross-device history, billing, and user-level quotas are not implemented.

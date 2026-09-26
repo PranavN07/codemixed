@@ -2,10 +2,14 @@ import { geminiDetect, getGeminiKey } from "@/lib/gemini";
 import { getApiKey, googleDetect } from "@/lib/google";
 import { heuristicDetect } from "@/lib/heuristic";
 import { getLangName } from "@/lib/languages";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 import { splitIntoSentences } from "@/lib/segment";
 import type { SegregateResponse, TextSegment } from "@/lib/types";
 
 export async function POST(request: Request): Promise<Response> {
+  const rateLimitResponse = await checkApiRateLimit(request);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let body: unknown;
   try {
     body = await request.json();

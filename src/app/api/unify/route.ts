@@ -2,6 +2,7 @@ import { geminiDetect, geminiTranslate, getGeminiKey } from "@/lib/gemini";
 import { getApiKey, googleDetect, googleTranslate } from "@/lib/google";
 import { heuristicDetect } from "@/lib/heuristic";
 import { getLangName, isSupportedTarget, resolveGoogleTarget } from "@/lib/languages";
+import { checkApiRateLimit } from "@/lib/rate-limit";
 import { splitIntoSentences } from "@/lib/segment";
 import { devanagariToLatin } from "@/lib/transliterate";
 import type { UnifyRequest, UnifyResponse } from "@/lib/types";
@@ -13,6 +14,9 @@ function sameLanguage(source: string, target: string): boolean {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const rateLimitResponse = await checkApiRateLimit(request);
+  if (rateLimitResponse) return rateLimitResponse;
+
   let body: UnifyRequest;
   try {
     body = (await request.json()) as UnifyRequest;
@@ -36,6 +40,13 @@ export async function POST(request: Request): Promise<Response> {
   if (Array.isArray(body.segments) && body.segments.length > 0) {
     if (body.segments.length > 200) {
       return Response.json({ error: "Too many segments (max 200)" }, { status: 400 });
+    }
+    if (body.segments.some((segment) => typeof segment?.text !== "string")) {
+      return Response.json({ error: "Each segment must include text as a string" }, { status: 400 });
+    }
+    const totalLength = body.segments.reduce((total, segment) => total + segment.text.length, 0);
+    if (totalLength > 20000) {
+      return Response.json({ error: "Text too long (max 20,000 characters)" }, { status: 400 });
     }
     working = body.segments.map((s, i) => ({
       id: s.id ?? i + 1,
@@ -103,7 +114,7 @@ export async function POST(request: Request): Promise<Response> {
       } catch (err) {
         console.error("Gemini translate failed:", err);
         return Response.json(
-          { error: `Translation failed: ${(err as Error).message}` },
+          { error: "Translation is temporarily unavailable. Please try again." },
           { status: 502 },
         );
       }
@@ -118,7 +129,7 @@ export async function POST(request: Request): Promise<Response> {
       } catch (err) {
         console.error("Google translate failed:", err);
         return Response.json(
-          { error: `Translation failed: ${(err as Error).message}` },
+          { error: "Translation is temporarily unavailable. Please try again." },
           { status: 502 },
         );
       }

@@ -37,6 +37,7 @@ export async function googleDetect(texts: string[]): Promise<{ language: string;
   const res = await fetch(`${DETECT_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(20_000),
     body: JSON.stringify({ q: texts }),
   });
   if (!res.ok) {
@@ -64,6 +65,7 @@ export async function googleTranslate(
   const res = await fetch(`${TRANSLATE_URL}?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(20_000),
     body: JSON.stringify({ q: texts, target, format: "text" }),
   });
   if (!res.ok) {
